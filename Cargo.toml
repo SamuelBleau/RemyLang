@@ -1,0 +1,25 @@
+[package]
+name = "remylang"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "RemyLang - A programming language compiler and VM"
+license = "MIT"
+repository = "https://github.com/SamuelBleau/RemyLang"
+
+# Voir https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Ici vous ajouterez vos dépendances
+# Exemples courants pour un compilateur :
+# clap = { version = "4.5", features = ["derive"] }  # CLI arguments
+# anyhow = "1.0"  # Error handling
+# thiserror = "1.0"  # Custom error types
+
+[dev-dependencies]
+# Dépendances uniquement pour les tests
+# criterion = "0.5"  # Benchmarking
+
+[[bin]]
+name = "remylang"
+path = "src/main.rs"
