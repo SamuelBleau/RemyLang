@@ -1,6 +1,4 @@
-mod lexer;
-
-use lexer::Lexer;
+use remylang::lexer::Lexer;
 
 fn main() {
     println!("RemyLang v0.1.0");
