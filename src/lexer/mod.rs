@@ -16,5 +16,8 @@
 mod token;
 mod lexer;
 
-pub use token::Token;
+// Re-export for external use
 pub use lexer::Lexer;
+
+#[allow(unused_imports)]
+pub use token::Token;

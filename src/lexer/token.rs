@@ -87,6 +87,9 @@ pub enum Token {
 }
 
 impl Token {
+    /// Returns true if the token is a keyword
+    /// Used by the parser to validate syntax
+    #[allow(dead_code)] // Will be used in parser phase
     pub fn is_keyword(&self) -> bool {
         matches!(
             self,
@@ -101,13 +104,17 @@ impl Token {
                 | Token::Return
                 | Token::If
                 | Token::Else
-                | Token::While
-                | Token::For
-                | Token::Break
-                | Token::Continue
+                // TODO: Uncomment when loops are implemented
+                // | Token::While
+                // | Token::For
+                // | Token::Break
+                // | Token::Continue
         )
     }
 
+    /// Returns true if the token is a literal value
+    /// Used by the parser for expression parsing
+    #[allow(dead_code)] // Will be used in parser phase
     pub fn is_literal(&self) -> bool {
         matches!(
             self,
@@ -115,6 +122,9 @@ impl Token {
         )
     }
 
+    /// Returns true if the token is an operator
+    /// Used by the parser (especially Pratt parser) for precedence handling
+    #[allow(dead_code)] // Will be used in parser phase
     pub fn is_operator(&self) -> bool {
         matches!(
             self,
