@@ -14,7 +14,7 @@
 
 mod expr;
 mod stmt;
-mod operator;
+pub mod operator;
 
 // Re-exports
 pub use expr::{Expr, Literal};

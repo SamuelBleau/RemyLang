@@ -13,7 +13,7 @@
 */
 
 use crate::lexer::Token;
-use crate::ast::{Expr, Stmt};
+use crate::ast::Stmt;
 use super::error::{ParseError, ParseResult};
 
 pub struct Parser {
@@ -29,7 +29,11 @@ impl Parser {
 
     /// Looks at the current token without consuming it.
     pub(super) fn peek(&self) -> Option<&Token> {
-        &self.tokens[self.current]
+        if self.current < self.tokens.len() {
+            Some(&self.tokens[self.current])
+        } else {
+            None
+        }
     }
 
     /// Looks at the next token without consuming it.
@@ -54,7 +58,11 @@ impl Parser {
         if self.is_at_end() {
             return false;
         }
-        std::mem::discriminant(self.peek()) == std::mem::discriminant(token_type)
+        if let Some(current) = self.peek() {
+            std::mem::discriminant(current) == std::mem::discriminant(token_type)
+        } else {
+            false
+        }
     }
 
     /// Checks if we have reached the end of the token stream.
@@ -63,13 +71,13 @@ impl Parser {
     }
 
     /// Advances if the current token matches the expected type.
-    pub(super) fn expect(&mut self, expected: &Token, message: &str) -> ParseResult<&Token> {
+    pub(super) fn expect(&mut self, expected: &Token, message: &str) -> ParseResult<Token> {
         if self.check(expected) {
             Ok(self.advance().clone())
         } else {
             Err(ParseError::UnexpectedToken {
                 expected: message.to_string(),
-                found: self.peek().clone(),
+                found: self.peek().cloned().unwrap_or(Token::EOF),
             })
         }
     }

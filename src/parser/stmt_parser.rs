@@ -14,7 +14,7 @@
 
 use super::parser::Parser;
 use super::error::{ParseError, ParseResult};
-use crate::ast::{Stmt, Param, Type, Expr};
+use crate::ast::{Stmt, Param, Type};
 use crate::lexer::Token;
 
 impl Parser {
@@ -177,6 +177,7 @@ impl Parser {
         let mut params = Vec::new();
         if !self.check(&Token::RightParen) {
             loop {
+                let type_annotation = self.parse_type()?;
                 let name = match self.advance() {
                     Token::Identifier(n) => n.clone(),
                     token => {
@@ -187,8 +188,6 @@ impl Parser {
                     }
                 };
                 
-                self.expect(&Token::Colon, "':' after parameter name")?;
-                let type_annotation = self.parse_type()?;
                 params.push(Param {
                     name,
                     type_annotation,
