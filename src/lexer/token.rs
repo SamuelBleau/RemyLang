@@ -80,6 +80,7 @@ pub enum Token {
     // Punctuation
     Semicolon,
     Comma,
+    Colon,
     Arrow,
 
     EOF,

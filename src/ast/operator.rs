@@ -28,15 +28,23 @@ pub enum UnaryOp {
 }
 
 impl BinaryOp {
-    pub fn precedence(&self) -> u8 {
+    /// Returns the precedence and associativity of the operator.
+    /// Higher precedence = tighter binding.
+    /// Associativity: true = left-to-right, false = right-to-left
+    pub fn precedence_and_associativity(&self) -> (u8, bool) {
         match self {
-            BinaryOp::Or => 1,
-            BinaryOp::And => 2,
-            BinaryOp::Equal | BinaryOp::NotEqual => 3,
-            BinaryOp::Less | BinaryOp::Greater | BinaryOp::LessEqual | BinaryOp::GreaterEqual => 4,
-            BinaryOp::Add | BinaryOp::Sub => 5,
-            BinaryOp::Mul | BinaryOp::Div | BinaryOp::Mod => 6,
-            BinaryOp::Pow => 7,
+            BinaryOp::Or => (1, true),
+            BinaryOp::And => (2, true),
+            BinaryOp::Equal | BinaryOp::NotEqual => (3, true),
+            BinaryOp::Less | BinaryOp::Greater | BinaryOp::LessEqual | BinaryOp::GreaterEqual => (4, true),
+            BinaryOp::Add | BinaryOp::Sub => (5, true),
+            BinaryOp::Mul | BinaryOp::Div | BinaryOp::Mod => (6, true),
+            BinaryOp::Pow => (7, false), // Right-associative: 2**3**2 = 2**(3**2)
         }
+    }
+
+    /// Returns just the precedence (for convenience)
+    pub fn precedence(&self) -> u8 {
+        self.precedence_and_associativity().0
     }
 }

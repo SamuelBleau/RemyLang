@@ -368,6 +368,10 @@ impl Lexer {
                 self.advance();
                 Token::Comma
             },
+            Some(':') => {
+                self.advance();
+                Token::Colon
+            },
             Some(ch) => {
                 self.advance();
                 Token::Invalid(ch)
