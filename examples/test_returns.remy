@@ -1,0 +1,6 @@
+func Add(Int a, Int b) -> Int {
+    return a + b;
+}
+
+Int result = Add(5, 3);
+print(2 + Add(1, 1));

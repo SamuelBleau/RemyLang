@@ -18,7 +18,7 @@ fn main() {
 }
 
 fn run_file(filename: &str) {
-    println!("=== RemyLang v0.1.0 - Running {} ===\n", filename);
+    println!("=== RemyLang v1.0.0 - Running {} ===\n", filename);
     
     let code = match fs::read_to_string(filename) {
         Ok(content) => content,

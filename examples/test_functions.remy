@@ -1,0 +1,25 @@
+// Test file for RemyLang functions
+
+func Add(Int a, Int b) -> Int {
+    return a + b;
+}
+
+func Multiply(Int x, Int y) -> Int {
+    return x * y;
+}
+
+func Greet(String name) {
+    print("Hello,", name);
+}
+
+Int result1 = Add(5, 3);
+println("5 + 3 =", result1);
+
+Int result2 = Multiply(4, 7);
+println("4 * 7 =", result2);
+
+Int result3 = Add(Multiply(2, 3), 4);
+println("2 * 3 + 4 =", result3);
+
+println(3 + 5 * 2);
+Greet("RemyLang\n");

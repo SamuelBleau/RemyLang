@@ -19,6 +19,7 @@ use crate::vm::error::{RuntimeError, RuntimeResult};
 pub fn call_builtin(name: &str, args: Vec<Value>) -> RuntimeResult<Value> {
     match name {
         "print" => builtin_print(args),
+        "println" => builtin_println(args),
         _ => Err(RuntimeError::UndefinedFunction { name: name.to_string() }),
     }
 }
@@ -29,13 +30,30 @@ fn builtin_print(args: Vec<Value>) -> RuntimeResult<Value> {
         if i > 0 {
             print!(" ");
         }
-        print!("{}", arg);
+        // Interpréter les séquences d'échappement dans les chaînes
+        match arg {
+            Value::String(s) => {
+                let processed = s
+                    .replace("\\n", "\n")
+                    .replace("\\t", "\t")
+                    .replace("\\r", "\r")
+                    .replace("\\\\", "\\");
+                print!("{}", processed);
+            }
+            _ => print!("{}", arg),
+        }
     }
+    Ok(Value::Void)
+}
+
+/// Built-in: println(...) - prints values to stdout with newline
+fn builtin_println(args: Vec<Value>) -> RuntimeResult<Value> {
+    builtin_print(args)?;
     println!();
     Ok(Value::Void)
 }
 
 /// Check if a function name is a built-in
 pub fn is_builtin(name: &str) -> bool {
-    matches!(name, "print")
+    matches!(name, "print" | "println")
 }
