@@ -15,4 +15,4 @@
 pub mod lexer;
 pub mod ast;
 pub mod parser;
-// pub mod vm;      // Will be added later
+pub mod vm;
