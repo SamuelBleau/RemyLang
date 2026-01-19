@@ -10,6 +10,7 @@ repository = "https://github.com/SamuelBleau/RemyLang"
 # Voir https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+inkwell = { version = "0.8.0", features = ["llvm17-0"] }
 # Ici vous ajouterez vos dépendances
 # Exemples courants pour un compilateur :
 # clap = { version = "4.5", features = ["derive"] }  # CLI arguments

@@ -28,4 +28,5 @@ pub enum Type {
     Char,
     Bool,
     Array(Box<Type>),
+    Void,
 }
