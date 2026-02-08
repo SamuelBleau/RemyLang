@@ -13,6 +13,7 @@ pub enum TypeError {
     ArgumentTypeMismatch { position: usize, expected: Type, found: Type },
     NotCallable,
     InvalidCallTarget,
+    InvalidUnaryOperand { op: UnaryOp, operand_type: Type },
 }
 
 pub struct TypeChecker {
@@ -217,6 +218,31 @@ impl TypeChecker {
                         Ok(return_type.clone())
                     }
                     Symbol::Variable(_) => Err(TypeError::NotCallable)
+                }
+            }
+            Expr::Unary { op, right } => {
+                let right_type = self.infer_expr(right)?;
+
+                use UnaryOp::*;
+                match op {
+                    Minus => {
+                        if right_type != Type::Int {
+                            return Err(TypeError::InvalidUnaryOperand {
+                                op: op.clone(),
+                                operand_type: right_type,
+                            });
+                        }
+                        Ok(Type::Int)
+                    }
+                    Not => {
+                        if right_type != Type::Bool {
+                            return Err(TypeError::InvalidUnaryOperand {
+                                op: op.clone(),
+                                operand_type: right_type,
+                            });
+                        }
+                        Ok(Type::Bool)
+                    }
                 }
             }
             // _ => Ok(Type::Int), TODO: Take this off
