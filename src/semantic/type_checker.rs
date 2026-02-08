@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::semantic::symbol_table::{Symbol, SymbolTable};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -45,10 +46,10 @@ impl TypeChecker {
 
                 if let Some(expected_type) = type_annotation {
                     if expected_type != &value_type {
-                        return Err(TypeError::TypeMismatch { expected: expected_type.clone(), found: value_type });
+                        return Err(TypeError::TypeMismatch { expected: expected_type.clone(), found: value_type.clone() });
                     }
                 }
-                self.symbol_table.define(name.clone(), value_type);
+                self.symbol_table.define(name.clone(), Symbol::Variable(value_type));
                 Ok(())
             }
 
@@ -64,13 +65,23 @@ impl TypeChecker {
             }
 
             Stmt::FunctionDecl { name, params, return_type, body } => {
+                // Register the function in the current scope first
+                let param_types: Vec<Type> = params.iter().map(|p| p.type_annotation.clone()).collect();
+                self.symbol_table.define(
+                    name.clone(),
+                    Symbol::Function {
+                        params: param_types,
+                        return_type: return_type.clone().unwrap_or(Type::Void),
+                    }
+                );
+
                 self.symbol_table.enter_scope();
                 self.current_function_return_type = return_type.clone();
 
                 for param in params {
                     self.symbol_table.define(
                         param.name.clone(),
-                        param.type_annotation.clone(),
+                        Symbol::Variable(param.type_annotation.clone()),
                     )
                 }
 
@@ -90,8 +101,16 @@ impl TypeChecker {
             Expr::Literal(Literal::Bool(_)) => Ok(Type::Bool),
             Expr::Literal(Literal::String(_)) => Ok(Type::String),
             Expr::Variable(name) => {
-                self.symbol_table.get(name)
-                    .ok_or_else(|| TypeError::UndefinedVariable(name.clone()))
+                let symbol = self.symbol_table.get(name)
+                    .ok_or_else(|| TypeError::UndefinedVariable(name.clone()))?;
+
+                match symbol {
+                    Symbol::Variable(ty) => Ok(ty.clone()),
+                    Symbol::Function { .. } => {
+                        // Functions used as values might need special handling
+                        Err(TypeError::InvalidOperand(format!("Cannot use function '{}' as a value", name)))
+                    }
+                }
             }
             Expr::Binary { left, op, right } => {
                 let left_type = self.infer_expr(left)?;
