@@ -15,6 +15,12 @@ pub enum TypeError {
     InvalidCallTarget,
     InvalidUnaryOperand { op: UnaryOp, operand_type: Type },
     InvalidBinaryOperands { op: BinaryOp, left: Type, right: Type },
+    EmptyArrayLiteral,
+    HeterogeneousArray { expected: Type, found: Type },
+    InvalidIndexType { found: Type },
+    NotIndexable { found: Type },
+    MissingReturn(String),
+    VoidValueNotAllowed,
 }
 
 pub struct TypeChecker {
@@ -46,12 +52,30 @@ impl TypeChecker {
         }
     }
 
+    fn has_return(&self, stmt: &Stmt) -> bool {
+        match stmt {
+            Stmt::Return(_) => true,
+            Stmt::Block(stmts) => stmts.iter().any(|s| self.has_return(s)),
+            Stmt::If { then_branch, else_branch, .. } => {
+                self.has_return(then_branch) && else_branch.as_ref().map_or(false, |e| self.has_return(e))
+            }
+            _ => false,
+        }
+    }
+
     fn check_stmt(&mut self, stmt: &Stmt) -> Result<(), TypeError> {
         match stmt {
             Stmt::Let { name, type_annotation, value } => {
                 let value_type = self.infer_expr(value)?;
 
+                if value_type == Type::Void {
+                    return Err(TypeError::VoidValueNotAllowed);
+                }
+
                 if let Some(expected_type) = type_annotation {
+                    if expected_type == &Type::Void {
+                        return Err(TypeError::VoidTypeNotAllowed);
+                    }
                     if expected_type != &value_type {
                         return Err(TypeError::TypeMismatch { expected: expected_type.clone(), found: value_type.clone() });
                     }
@@ -96,6 +120,13 @@ impl TypeChecker {
                 }
 
                 self.check_stmt(body)?;
+
+                if let Some(ret_type) = return_type {
+                    if ret_type != &Type::Void && !self.has_return(body) {
+                        return Err(TypeError::MissingReturn(name.clone()));
+                    }
+                }
+
                 self.symbol_table.exit_scope();
                 self.current_function_return_type = None;
                 Ok(())
@@ -288,7 +319,36 @@ impl TypeChecker {
                     }
                 }
             }
-            // _ => Ok(Type::Int), TODO: Take this off
+            Expr::ArrayLiteral(elements) => {
+                if elements.is_empty() {
+                    return Err(TypeError::EmptyArrayLiteral);
+                }
+
+                let first_type = self.infer_expr(&elements[0])?;
+                for elem in &elements[1..] {
+                    let elem_type = self.infer_expr(elem)?;
+                    if elem_type != first_type {
+                        return Err(TypeError::HeterogeneousArray {
+                            expected: first_type.clone(),
+                            found: elem_type,
+                        });
+                    }
+                }
+                Ok(Type::Array(Box::new(first_type)))
+            }
+            Expr::ArrayAccess { array, index } => {
+                let array_type = self.infer_expr(array)?;
+                let index_type = self.infer_expr(index)?;
+
+                if index_type != Type::Int {
+                    return Err(TypeError::InvalidIndexType { found: index_type });
+                }
+
+                match array_type {
+                    Type::Array(elem_type) => Ok(*elem_type),
+                    _ => Err(TypeError::NotIndexable { found: array_type }),
+                }
+            }
         }
     }
 }
