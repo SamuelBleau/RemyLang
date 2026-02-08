@@ -14,6 +14,7 @@ pub enum TypeError {
     NotCallable,
     InvalidCallTarget,
     InvalidUnaryOperand { op: UnaryOp, operand_type: Type },
+    InvalidBinaryOperands { op: BinaryOp, left: Type, right: Type },
 }
 
 pub struct TypeChecker {
@@ -171,7 +172,6 @@ impl TypeChecker {
                 match symbol {
                     Symbol::Variable(ty) => Ok(ty.clone()),
                     Symbol::Function { .. } => {
-                        // Functions used as values might need special handling
                         Err(TypeError::InvalidOperand(format!("Cannot use function '{}' as a value", name)))
                     }
                 }
@@ -180,13 +180,56 @@ impl TypeChecker {
                 let left_type = self.infer_expr(left)?;
                 let right_type = self.infer_expr(right)?;
 
-                if left_type != right_type {
-                    return Err(TypeError::TypeMismatch {
-                        expected: left_type,
-                        found: right_type
-                    });
+                use BinaryOp::*;
+                match op {
+                    // Arithmetic operators : Int -> Int -> Int
+                    Add | Sub | Mul | Div | Mod | Pow => {
+                        if left_type != Type::Int || right_type != Type::Int {
+                            return Err(TypeError::InvalidBinaryOperands {
+                                op: op.clone(),
+                                left: left_type,
+                                right: right_type,
+                            });
+                        }
+                        Ok(Type::Int);
+                    }
+
+                    // Comparison operators : Int -> Int -> Bool
+                    Less | Greater | LessEqual | GreaterEqual => {
+                        if left_type != Type::Int || right_type != Type::Int {
+                            return Err(TypeError::InvalidBinaryOperands {
+                                op: op.clone(),
+                                left: left_type,
+                                right: right_type,
+                            });
+                        }
+                        Ok(Type::Bool);
+                    }
+
+                    // Equality operators : T -> T -> Bool
+                    Equal | NotEqual => {
+                        if left_type != right_type {
+                            return Err(TypeError::InvalidBinaryOperands {
+                                op: op.clone(),
+                                left: left_type,
+                                right: right_type,
+                            });
+                        }
+                        Ok(Type::Bool);
+                    }
+
+                    // Logical operators : Bool -> Bool -> Bool
+                    And | Or => {
+                        if left_type != Type::Bool || right_type != Type::Bool {
+                            return Err(TypeError::InvalidBinaryOperands {
+                                op: op.clone(),
+                                left: left_type,
+                                right: right_type,
+                            });
+                        }
+                        Ok(Type::Bool);
+                    }
                 }
-                Ok(left_type)
             }
             Expr::Literal(Literal::Char(_)) => Ok(Type::Char),
             Expr::Call { callee, args } => {
