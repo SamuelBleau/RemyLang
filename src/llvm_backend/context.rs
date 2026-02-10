@@ -12,7 +12,7 @@
  *
  * -------------------------------------------------------------------------
 */
-use std::task::Context;
+
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::builder::Builder;
@@ -31,12 +31,12 @@ impl LLVMCompilerContext {
     }
 
     ///Create a new module to compile a file
-    pub fn create_module(&self, name: &str) -> Module {
+    pub fn create_module(&self, name: &str) -> Module<'_> {
         self.context.create_module(name)
     }
 
     /// Create a new builder to build the IE
-    pub fn create_builder(&self) -> Builder {
+    pub fn create_builder(&self) -> Builder<'_> {
         self.context.create_builder()
     }
 

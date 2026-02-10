@@ -16,3 +16,4 @@ pub mod lexer;
 pub mod ast;
 pub mod parser;
 pub mod vm;
+pub mod llvm_backend;
