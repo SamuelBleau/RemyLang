@@ -13,12 +13,11 @@
  * -------------------------------------------------------------------------
 */
 use std::collections::HashMap;
-use crate::ast::{Expr, Literal, Stmt, Type, BinaryOp, UnaryOp, Param};
-use crate::llvm_backend::types::TypeConverter;
+use crate::ast::{Expr, Literal, Stmt};
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::builder::Builder;
-use inkwell::values::{BasicValue, BasicValueEnum, FunctionValue};
+use inkwell::values::BasicValueEnum;
 
 ///
 pub struct CodeGenerator<'ctx> {
@@ -60,7 +59,7 @@ impl<'ctx> CodeGenerator<'ctx> {
     }
 
     /// Compile an expression
-    pub fn compile_expr(&mut self, expr: &Expr) -> Result<BasicValueEnum, String> {
+    pub fn compile_expr(&self, expr: &Expr) -> Result<BasicValueEnum, String> {
         match expr {
             Expr::Literal(lit) => self.compile_literal(lit),
             //TODO: Variables, operators, calls, etc...
@@ -68,8 +67,21 @@ impl<'ctx> CodeGenerator<'ctx> {
         }
     }
 
+    /// Compile a variable declaration
+    pub fn compile_let(&mut self, name: &str, value: &Expr) -> Result<(), String> {
+        let llvm_value = self.compile_expr(value)?;
+        let value_type = llvm_value.get_type();
+
+        let result_alloca = self.builder.build_alloca(value_type, name)
+            .map_err(|e| format!("{:?}", e))?;
+
+        let _ = self.builder.build_store(result_alloca, llvm_value)
+            .map_err(|e| format!("{:?}", e))?;
+
+        Ok(())
+    }
     /// Compile a literal
-    pub fn compile_literal(&mut self, lit: &Literal) -> Result<BasicValueEnum, String> {
+    pub fn compile_literal(&self, lit: &Literal) -> Result<BasicValueEnum, String> {
         match lit {
             Literal::Number(n) => {
                 let llvm_int = self.context.i64_type().const_int(*n as u64, true);

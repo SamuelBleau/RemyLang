@@ -19,5 +19,5 @@ pub mod codegen;
 pub mod module;
 
 pub use context::LLVMCompilerContext;
-// pub use codegen::CodeGenerator;
+pub use codegen::CodeGenerator;
 // pub use types::TypeConverter;
