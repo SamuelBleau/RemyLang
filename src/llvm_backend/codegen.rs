@@ -13,18 +13,20 @@
  * -------------------------------------------------------------------------
 */
 use std::collections::HashMap;
+use std::cell::RefCell;
 use crate::ast::{Expr, Literal, Stmt};
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::builder::Builder;
-use inkwell::values::BasicValueEnum;
+use inkwell::values::{BasicValueEnum, PointerValue};
+use inkwell::types::BasicTypeEnum;
 
 ///
 pub struct CodeGenerator<'ctx> {
     context: &'ctx Context,
     module: Module<'ctx>,
     builder: Builder<'ctx>,
-    variables: HashMap<String, BasicValueEnum<'ctx>>,
+    variables: RefCell<HashMap<String, (PointerValue<'ctx>, BasicTypeEnum<'ctx>)>>,
 }
 
 impl<'ctx> CodeGenerator<'ctx> {
@@ -34,7 +36,7 @@ impl<'ctx> CodeGenerator<'ctx> {
             context,
             module,
             builder,
-            variables: HashMap::new(),
+            variables: RefCell::new(HashMap::new()),
         }
     }
 
@@ -72,14 +74,33 @@ impl<'ctx> CodeGenerator<'ctx> {
         let llvm_value = self.compile_expr(value)?;
         let value_type = llvm_value.get_type();
 
-        let result_alloca = self.builder.build_alloca(value_type, name)
+        let alloca = self.builder.build_alloca(value_type, name)
             .map_err(|e| format!("{:?}", e))?;
 
-        let _ = self.builder.build_store(result_alloca, llvm_value)
+        self.builder.build_store(alloca, llvm_value)
             .map_err(|e| format!("{:?}", e))?;
+
+        let alloca_ctx: PointerValue<'ctx> = unsafe { std::mem::transmute(alloca) };
+        let value_type_ctx: BasicTypeEnum<'ctx> = unsafe { std::mem::transmute(value_type) };
+
+        self.variables.borrow_mut().insert(name.to_string(), (alloca_ctx, value_type_ctx));
 
         Ok(())
     }
+
+    /// Load a variable
+    pub fn compile_variable(&self, name: &str) -> Result<BasicValueEnum, String> {
+        let variables = self.variables.borrow();
+        let (ptr, value_type) = variables
+            .get(name)
+            .ok_or_else(|| format!("Undefined variable: {}", name))?;
+
+        let loaded_value = self.builder.build_load(*value_type, *ptr, name)
+            .map_err(|e| format!("Failed to load: '{:?}'", e))?;
+
+        Ok(loaded_value)
+    }
+
     /// Compile a literal
     pub fn compile_literal(&self, lit: &Literal) -> Result<BasicValueEnum, String> {
         match lit {

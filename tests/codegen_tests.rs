@@ -1,7 +1,7 @@
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::builder::Builder;
-use remylang::llvm_backend::CodeGenerator;
+use remylang::llvm_backend::LLVMCompilerContext;
 
 #[cfg(test)]
 mod codegen_tests {
