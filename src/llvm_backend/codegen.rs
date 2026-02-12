@@ -39,6 +39,13 @@ impl<'ctx> CodeGenerator<'ctx> {
             variables: RefCell::new(HashMap::new()),
         }
     }
+    pub fn create_test_function(&mut self, name: &str) {
+        let i64_type = self.context.i64_type();
+        let fn_type = i64_type.fn_type(&[], false);
+        let function = self.module.add_function(name, fn_type, None);
+        let basic_block = self.context.append_basic_block(function, "entry");
+        self.builder.position_at_end(basic_block);
+    }
 
     /// Compile a list of statements
     pub fn compile_program(&mut self, stmts: &[Stmt]) -> Result<(), String> {
@@ -55,6 +62,9 @@ impl<'ctx> CodeGenerator<'ctx> {
                 self.compile_expr(expr);
                 Ok(())
             }
+            Stmt::Let { name, type_annotation: _, value } => {
+                self.compile_let(name, value)
+            }
             //TODO : Implement other statements
             _ => Err("Statement not yet implemented".to_string())
         }
@@ -64,6 +74,7 @@ impl<'ctx> CodeGenerator<'ctx> {
     pub fn compile_expr(&self, expr: &Expr) -> Result<BasicValueEnum, String> {
         match expr {
             Expr::Literal(lit) => self.compile_literal(lit),
+            Expr::Variable(name) => self.compile_variable(name),
             //TODO: Variables, operators, calls, etc...
             _ => Err("Expression not yet implemented".to_string())
         }
