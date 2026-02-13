@@ -1,25 +1,43 @@
 use remylang::lexer::Lexer;
 use remylang::parser::Parser;
 use remylang::vm::Interpreter;
+use remylang::llvm_backend::{LLVMCompilerContext, CodeGenerator};
 use std::env;
 use std::fs;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum CompilerMode {
+    VM,      // Traditional interpreter
+    LLVM,    // LLVM compilation
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     
-    if args.len() > 1 {
-        // File mode
-        let filename = &args[1];
-        run_file(filename);
+    let (mode, filename) = if args.len() > 1 && args[1] == "--llvm" {
+        // --llvm mode
+        if args.len() > 2 {
+            (CompilerMode::LLVM, Some(args[2].as_str()))
+        } else {
+            (CompilerMode::LLVM, None)
+        }
+    } else if args.len() > 1 {
+        // VM mode with file
+        (CompilerMode::VM, Some(args[1].as_str()))
     } else {
         // Demo mode
-        run_demo();
+        (CompilerMode::VM, None)
+    };
+
+    match filename {
+        Some(f) => run_file(f, mode),
+        None => run_demo(mode),
     }
 }
 
-fn run_file(filename: &str) {
-    println!("=== RemyLang v1.0.0 - Running {} ===\n", filename);
-    
+fn run_file(filename: &str, mode: CompilerMode) {
+    println!("=== RemyLang v1.0.0 - Running {} ({:?} mode) ===\n", filename, mode);
+
     let code = match fs::read_to_string(filename) {
         Ok(content) => content,
         Err(e) => {
@@ -28,14 +46,24 @@ fn run_file(filename: &str) {
         }
     };
     
-    execute_code(&code);
+    execute_code(&code, mode);
 }
 
-fn run_demo() {
-    println!("=== RemyLang v0.1.0 - Interpreter Demo ===\n");
-    
-    // Example code to execute
-    let code = r#"
+fn run_demo(mode: CompilerMode) {
+    println!("=== RemyLang v1.0.0 - Demo ({:?} mode) ===\n", mode);
+
+    // Example code to execute - simple enough to compile with LLVM
+    let code = match mode {
+        CompilerMode::LLVM => {
+            r#"
+Int x = 10;
+Int y = 5;
+Int sum = x + y;
+"#
+        }
+        CompilerMode::VM => {
+            // Full-featured demo for the interpreter
+            r#"
 Int x = 10;
 Int y = 5;
 
@@ -58,17 +86,19 @@ Array<Int> numbers = [1, 2, 3, 4, 5];
 print("Array:", numbers);
 print("First element:", numbers[0]);
 print("Third element:", numbers[2]);
-"#;
+"#
+        }
+    };
 
     println!("📝 Source Code:");
     println!("{}", "=".repeat(60));
     println!("{}", code);
     println!("{}\n", "=".repeat(60));
     
-    execute_code(code);
+    execute_code(code, mode);
 }
 
-fn execute_code(code: &str) {
+fn execute_code(code: &str, mode: CompilerMode) {
     // Step 1: Tokenization
     println!("🔤 Tokenization...");
     let mut lexer = Lexer::new(code.to_string());
@@ -99,8 +129,14 @@ fn execute_code(code: &str) {
         }
     };
     
-    // Step 3: Execution
-    println!("🚀 Execution:");
+    match mode {
+        CompilerMode::VM => execute_with_interpreter(ast),
+        CompilerMode::LLVM => execute_with_llvm(ast),
+    }
+}
+
+fn execute_with_interpreter(ast: Vec<remylang::ast::Stmt>) {
+    println!("🚀 Execution (VM Interpreter):");
     println!("{}", "=".repeat(60));
     let mut interpreter = Interpreter::new();
     
@@ -115,3 +151,36 @@ fn execute_code(code: &str) {
         }
     }
 }
+
+fn execute_with_llvm(ast: Vec<remylang::ast::Stmt>) {
+    println!("🔨 Compilation (LLVM Backend):");
+    println!("{}", "=".repeat(60));
+
+    // Create LLVM context and module
+    let llvm_ctx = LLVMCompilerContext::new();
+    let context = llvm_ctx.get_context();
+    let module = llvm_ctx.create_module("remylang_program");
+    let builder = llvm_ctx.create_builder();
+
+    let mut codegen = CodeGenerator::new(context, module, builder);
+
+    // Create a main function context for the builder to have a valid insertion point
+    codegen.create_test_function("main");
+
+    // Compile the program
+    match codegen.compile_program(&ast) {
+        Ok(_) => {
+            println!("✓ LLVM IR generated successfully\n");
+            println!("📋 Generated LLVM IR:");
+            println!("{}", "=".repeat(60));
+            codegen.print_ir();
+            println!("{}", "=".repeat(60));
+            println!("✓ Compilation successful!");
+        }
+        Err(e) => {
+            println!("{}", "=".repeat(60));
+            eprintln!("❌ Compilation Error: {}", e);
+        }
+    }
+}
+
