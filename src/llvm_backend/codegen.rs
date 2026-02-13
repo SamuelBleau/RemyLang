@@ -14,7 +14,8 @@
 */
 use std::collections::HashMap;
 use std::cell::RefCell;
-use crate::ast::{Expr, Literal, Stmt};
+use std::fmt::format;
+use crate::ast::{BinaryOp, Expr, Literal, Stmt};
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::builder::Builder;
@@ -75,6 +76,7 @@ impl<'ctx> CodeGenerator<'ctx> {
         match expr {
             Expr::Literal(lit) => self.compile_literal(lit),
             Expr::Variable(name) => self.compile_variable(name),
+            Expr::Binary { left, op, right} => self.compile_binary(left, op, right),
             //TODO: Variables, operators, calls, etc...
             _ => Err("Expression not yet implemented".to_string())
         }
@@ -110,6 +112,134 @@ impl<'ctx> CodeGenerator<'ctx> {
             .map_err(|e| format!("Failed to load: '{:?}'", e))?;
 
         Ok(loaded_value)
+    }
+
+    /// Compile a binary
+    pub fn compile_binary(&self, left: &Expr, op: &BinaryOp, right: &Expr) -> Result<BasicValueEnum, String> {
+        let left_val = self.compile_expr(left)?;
+        let right_val = self.compile_expr(right)?;
+
+        match op {
+            //Arithmetic
+            BinaryOp::Add => {
+                let result = self.builder.build_int_add(
+                    left_val.into_int_value(),
+                    right_val.into_int_value(),
+                    "add_tmp",
+                ).map_err(|e| format!("{:?}", e))?;
+                Ok(result.into())
+            }
+            BinaryOp::Sub => {
+                let result = self.builder.build_int_sub(
+                    left_val.into_int_value(),
+                    right_val.into_int_value(),
+                    "sub_tmp",
+                ).map_err(|e| format!("{:?}", e))?;
+                Ok(result.into())
+            }
+            BinaryOp::Mul => {
+                let result = self.builder.build_int_mul(
+                    left_val.into_int_value(),
+                    right_val.into_int_value(),
+                    "mul_tmp",
+                ).map_err(|e| format!("{:?}", e))?;
+                Ok(result.into())
+            }
+            BinaryOp::Div => {
+                let result = self.builder.build_int_signed_div(
+                    left_val.into_int_value(),
+                    right_val.into_int_value(),
+                    "div_tmp",
+                ).map_err(|e| format!("{:?}", e))?;
+                Ok(result.into())
+            }
+            BinaryOp::Mod => {
+                let result = self.builder.build_int_signed_rem(
+                    left_val.into_int_value(),
+                    right_val.into_int_value(),
+                    "mod_tmp",
+                ).map_err(|e| format!("{:?}", e))?;
+                Ok(result.into())
+            }
+            BinaryOp::Pow => {
+                //TODO: Implement a function because LLVM doesn't have a built-in power
+                Err("Power operator not yet implemented".to_string())
+            }
+
+            //Comparison
+            BinaryOp::Equal => {
+                let cmp = self.builder.build_int_compare(
+                    inkwell::IntPredicate::EQ,
+                    left_val.into_int_value(),
+                    right_val.into_int_value(),
+                    "eq_tmp",
+                ).map_err(|e| format!("{:?}", e))?;
+                Ok(cmp.into())
+            }
+            BinaryOp::NotEqual => {
+                let cmp = self.builder.build_int_compare(
+                    inkwell::IntPredicate::NE,
+                    left_val.into_int_value(),
+                    right_val.into_int_value(),
+                    "ne_tmp",
+                ).map_err(|e| format!("{:?}", e))?;
+                Ok(cmp.into())
+            }
+            BinaryOp::Less => {
+                let cmp = self.builder.build_int_compare(
+                    inkwell::IntPredicate::SLT,
+                    left_val.into_int_value(),
+                    right_val.into_int_value(),
+                    "lt_tmp",
+                ).map_err(|e| format!("{:?}", e))?;
+                Ok(cmp.into())
+            }
+            BinaryOp::Greater => {
+                let cmp = self.builder.build_int_compare(
+                    inkwell::IntPredicate::SGT,
+                    left_val.into_int_value(),
+                    right_val.into_int_value(),
+                    "gt_tmp",
+                ).map_err(|e| format!("{:?}", e))?;
+                Ok(cmp.into())
+            }
+            BinaryOp::LessEqual => {
+                let cmp = self.builder.build_int_compare(
+                    inkwell::IntPredicate::SLE,
+                    left_val.into_int_value(),
+                    right_val.into_int_value(),
+                    "le_tmp",
+                ).map_err(|e| format!("{:?}", e))?;
+                Ok(cmp.into())
+            }
+            BinaryOp::GreaterEqual => {
+                let cmp = self.builder.build_int_compare(
+                    inkwell::IntPredicate::SGE,
+                    left_val.into_int_value(),
+                    right_val.into_int_value(),
+                    "ge_tmp",
+                ).map_err(|e| format!("{:?}", e))?;
+                Ok(cmp.into())
+            }
+
+            // Logical operators
+            BinaryOp::And => {
+                let result = self.builder.build_and(
+                    left_val.into_int_value(),
+                    right_val.into_int_value(),
+                    "and_tmp",
+                ).map_err(|e| format!("{:?}", e))?;
+                Ok(result.into())
+            }
+            BinaryOp::Or => {
+                let result = self.builder.build_or(
+                    left_val.into_int_value(),
+                    right_val.into_int_value(),
+                    "or_tmp",
+                ).map_err(|e| format!("{:?}", e))?;
+                Ok(result.into())
+            }
+        }
     }
 
     /// Compile a literal
